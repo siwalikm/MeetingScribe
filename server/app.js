@@ -1,8 +1,16 @@
 const expressApp = require('./server');
-const aiClient = require('./ai-client');
+const GoogleCalendarClient= require('./google-calendar');
 
+global.googleCalendar = new GoogleCalendarClient();
 new expressApp();
-new aiClient();
+
+// Uncomment test to test the google calendar events.
+//test();
+//
+//async function test() {
+//  const response = await global.googleCalendar.getFutureEventsSummaries();
+//  console.log('response', response);
+//}
 
 
 

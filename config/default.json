@@ -1,0 +1,5 @@
+
+{
+  "google_calendar_auth_token": "ya29.Glu7BewOjbYGUoqxpYK8DjaJtlxlLVQVAPip2R-KnwTXH_RYUey9M33apj72g9fRnhbcpzQGifV87100vCGfTT0ZXAL-N-A5MhdRvlm8FRg62E5MLJTSnx0C-E2w",
+  "google_calendar_upper_bound": 30 // In minutes.
+}

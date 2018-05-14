@@ -3,10 +3,7 @@ const createError = require('http-errors');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const path = require('path');
-const usersRouter = require('../routes/users');
 const indexRouter = require('../routes/index');
-const meetingsRouter = require('../routes/meeting');
-const taskRouter = require('../routes/task');
 
 const expressApp = class ExpressServer {
 
@@ -34,9 +31,6 @@ const expressApp = class ExpressServer {
 
   static setupRoutes(app, options) {
     app.use('/', indexRouter);
-    app.use('/users', usersRouter);
-    app.use('/meeting', meetingsRouter);
-    app.use('/task', taskRouter);
   }
 
   static setupApp(app, options) {
