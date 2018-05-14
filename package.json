@@ -1,0 +1,24 @@
+{
+  "name": "meetingscribe",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "DEBUG=* && node $NODE_DEBUG_OPTIONS server/app.js"
+  },
+  "dependencies": {
+    "api-ai-javascript": "^2.0.0-beta.14",
+    "api.ai": "^1.0.3",
+    "babel-cli": "^6.0.0",
+    "babel-preset-es2015": "^6.0.0",
+    "cookie-parser": "~1.4.3",
+    "ejs": "^2.6.1",
+    "express": "~4.16.0",
+    "http-errors": "~1.6.2",
+    "morgan": "~1.9.0",
+    "pug": "2.0.0-beta11",
+    "uuid": "^3.2.1"
+  },
+  "devDependencies": {
+    "debug": "^2.6.9"
+  }
+}
