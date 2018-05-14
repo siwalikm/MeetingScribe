@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "DEBUG=* && node $NODE_DEBUG_OPTIONS server/app.js"
+    "start": "DEBUG=* && node $NODE_DEBUG_OPTION server/app.js"
   },
   "dependencies": {
     "api-ai-javascript": "^2.0.0-beta.14",
