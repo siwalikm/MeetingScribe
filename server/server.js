@@ -1,12 +1,14 @@
 const express = require('express');
+const config = require('config');
 const createError = require('http-errors');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const path = require('path');
 const indexRouter = require('../routes/index');
 
-const expressApp = class ExpressServer {
+const port = config.get('express.port') || 5000;
 
+const expressApp = class ExpressServer {
   constructor(options = {}) {
     const app = express();
     ExpressServer.viewEngineSetup(app, options);
@@ -17,8 +19,6 @@ const expressApp = class ExpressServer {
 
   static viewEngineSetup(app, options) {
     app.set('views', path.join(__dirname, '../views'));
-//    app.set('view engine', 'pug');
-
     app.engine('html', require('ejs').renderFile);
     app.set('view engine', 'html');
 
@@ -33,28 +33,25 @@ const expressApp = class ExpressServer {
     app.use('/', indexRouter);
   }
 
-  static setupApp(app, options) {
-    app.listen(5000);
-    global.expressApp = app;
-  }
-
   static errorSetup(app, options) {
-    // catch 404 and forward to error handler
     app.use(function(req, res, next) {
       next(createError(404));
     });
 
-    // error handler
     app.use(function(err, req, res, next) {
       // set locals, only providing error in development
       res.locals.message = err.message;
       res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-      // render the error page
       res.status(err.status || 500);
       res.json({error: err});
     });
   };
+
+  static setupApp(app, options) {
+    app.listen(port);
+    global.expressApp = app;
+  }
 };
 
 module.exports = expressApp;

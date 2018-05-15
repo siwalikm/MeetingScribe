@@ -12,12 +12,14 @@ const upperBound = config.get('google_calendar_upper_bound');
 const GoogleCalendar  = class GoogleCalendar {
   constructor() {}
 
+  // Not used any more.
   static getCalendarList() {
     return request.get('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
       auth: { 'bearer': token }
     });
   }
 
+  // Not used any more.
   getPrimaryCalendarId() {
    return GoogleCalendar.getCalendarList().then((response) => {
       console.log('response', response);
@@ -35,6 +37,7 @@ const GoogleCalendar  = class GoogleCalendar {
 
   /**
    * Returns event for the next 3 hours.
+   * Making the assumption that we will fetch the primary calendar ID.
    **/
   getFutureEventsSummaries() {
     const timeMin = new Date().toISOString();

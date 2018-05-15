@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const GoogleCalendar = require('../server/google-calendar');
+const Messages = require('../server/messages');
 
 const ActionEnum = {
   START_MEETING: 0,
@@ -10,26 +12,33 @@ const ActionEnum = {
   UNKNOWN_ACTION: 5,
 };
 
-router.get('/', function(req, res, next) {
-  console.log('req', req);
-  res.json({success: true});
-});
+const INTENTS = {
+  START_MEETING: 'StartMeeting',
+  CONCLUDE_MEETING: 'ConcludeMeeting',
+  TASK: 'task',
+  NOTE: 'note',
+  TIMEBOX_MEETING: ''
+};
 
-// Webhooks that listens to the ApiAI and sends a response back..
-router.post('/', function(req, res, next) {
-  //  const payload = req.body.originalDetectIntentRequest.payload;
-  //  Need to persist the conversation for the future reference.
-  //  console.log('conversation ID', payload.conversation.conversationId);
-  const params = req.body.queryResult.parameters;
-  const session = req.body.session;
+/**
+ * Webhooks that listens to the ApiAI and sends a respond back..
+ * The response should be sent back within 5 seconds.
+ **/
+router.post('/', async function(req, res, next) {
+  const body = req.body;
+  const params = body.queryResult.parameters;
+  const session = body.session;
+  const intent = body.queryResult.intent.displayName;
 
-  console.log('session', session);
-  console.log('params', params);
+//  console.log('session', session);
+//  console.log('params', params);
+  console.log('intent', intent);
 
-  // It's will be a switch case to filter the entities one by one.
+  // switch case based on intent and perform the actions.
+  const message = await getMessage({session, intent, params});
 
   res.type('json');
-  res.json(sendFinalMessage(params));
+  res.json(message);
 });
 
 function sendFinalMessage(params) {
@@ -50,9 +59,31 @@ function sendFinalMessage(params) {
   }
 }
 
-function handleTaskEvents(session, res, params, payload = {}) {
+function getMessage(options) {
+  const {session, intent, params} = options;
+
+  switch (intent) {
+    case INTENTS.START_MEETING:
+      break;
+    case INTENTS.TASK:
+      return handleTaskEvents(options);
+    case INTENTS.NOTE:
+      break;
+    case INTENTS.TIMEBOX_MEETING:
+      break;
+    case INTENTS.CONCLUDE_MEETING:
+      break;
+    default:
+      return Messages.unKnownIntent();
+  }
+}
+
+function handleTaskEvents(options) {
   // Add task to the redis key/value pair.
   // The key will be the session.
+  const {session, intent, params} = options;
+
+  return Messages.taskAdded(params);
 }
 
 function handleNoteEvents(session, res, params, payload = {}) {
@@ -62,7 +93,9 @@ function handleNoteEvents(session, res, params, payload = {}) {
 
 async function handleMeetingCreate(session, params, payload = {}) {
   const message = '';
-  const summaries = await global.googleCalendar.getFutureEventsSummaries();
+  const googleCalendar = new GoogleCalendar();
+  const summaries = await googleCalendar.getFutureEventsSummaries();
+
   if (summaries.length === 0) {
     // Send no events message
   } else if (summaries.length === 1) {
