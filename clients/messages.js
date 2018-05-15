@@ -62,7 +62,21 @@ const messages = class Messages {
    }
 
    static noteAdded(params) {
-
+      return {
+        "fulfillmentMessages": [
+          {
+            "platform": "ACTIONS_ON_GOOGLE",
+            "simpleResponses": {
+              "simpleResponses": [
+                {
+                  "displayText": `Done`,
+                  "ssml": `<speak> Done </speak>`
+                }
+              ]
+            }
+          }
+        ]
+      }
    }
 
    static unKnownIntent() {
@@ -82,6 +96,7 @@ const messages = class Messages {
        ]
      }
    }
+
 };
 
 module.exports = messages;

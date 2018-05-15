@@ -1,16 +1,9 @@
 const express = require('express');
+const config = require('config');
 const router = express.Router();
-const GoogleCalendar = require('../server/google-calendar');
-const Messages = require('../server/messages');
-
-const ActionEnum = {
-  START_MEETING: 0,
-  STOP_MEETING: 1,
-  NOTE_ACTION: 2,
-  TASK_ACTION: 3,
-  TIMEBOX_MEETING: 4,
-  UNKNOWN_ACTION: 5,
-};
+const GoogleCalendar = require('../clients/google-calendar');
+const Messages = require('../clients/messages');
+const RedisClient = require('../clients/redis-client');
 
 const INTENTS = {
   START_MEETING: 'StartMeeting',
@@ -19,6 +12,8 @@ const INTENTS = {
   NOTE: 'note',
   TIMEBOX_MEETING: ''
 };
+
+const RedisExpiryTime = config.get('redis.global_expiry_time') || 1800;
 
 /**
  * Webhooks that listens to the ApiAI and sends a respond back..
@@ -30,13 +25,10 @@ router.post('/', async function(req, res, next) {
   const session = body.session;
   const intent = body.queryResult.intent.displayName;
 
-//  console.log('session', session);
-//  console.log('params', params);
   console.log('intent', intent);
+  console.log('params', params);
 
-  // switch case based on intent and perform the actions.
   const message = await getMessage({session, intent, params});
-
   res.type('json');
   res.json(message);
 });
@@ -64,59 +56,82 @@ function getMessage(options) {
 
   switch (intent) {
     case INTENTS.START_MEETING:
-      break;
+      return handleMeetingCreate(options);
     case INTENTS.TASK:
       return handleTaskEvents(options);
     case INTENTS.NOTE:
-      break;
+      return handleNoteEvents(options);
     case INTENTS.TIMEBOX_MEETING:
-      break;
+      return Messages.unKnownIntent();
     case INTENTS.CONCLUDE_MEETING:
-      break;
+      return handleMeetingComplete(options);
     default:
       return Messages.unKnownIntent();
   }
 }
 
-function handleTaskEvents(options) {
-  // Add task to the redis key/value pair.
-  // The key will be the session.
+async function handleTaskEvents(options) {
   const {session, intent, params} = options;
+  const key = RedisClient.getMeetingKey(session);
+  const value = await global.redisClient.getKey(key);
+
+  if ( Object.keys(value).length === 0 ) { return Messages.unKnownIntent();}
+  value.tasks.push({user: params.user, task: params.task});
+  console.log('tasks', value.tasks);
+  await global.redisClient.setKeyWithExpiry(key, value, RedisExpiryTime);
 
   return Messages.taskAdded(params);
 }
 
-function handleNoteEvents(session, res, params, payload = {}) {
-  // Add note to the redis key/value pair.
-  // The key will be the session.
+async function handleNoteEvents(options) {
+  const {session, intent, params} = options;
+  const key = RedisClient.getMeetingKey(session);
+  const value = await global.redisClient.getKey(key);
+
+  if ( Object.keys(value).length === 0 ) { return Messages.unKnownIntent(); }
+  value.notes.push(params.note);
+  console.log('notes', value.notes);
+  await global.redisClient.setKeyWithExpiry(key, value, RedisExpiryTime);
+
+  return Messages.noteAdded(params);
 }
 
-async function handleMeetingCreate(session, params, payload = {}) {
-  const message = '';
+async function handleMeetingCreate(options) {
+  const {session, intent, params} = options;
   const googleCalendar = new GoogleCalendar();
   const summaries = await googleCalendar.getFutureEventsSummaries();
 
   if (summaries.length === 0) {
-    // Send no events message
+    // Send no events message.
+    return Messages.unKnownIntent();
+
   } else if (summaries.length === 1) {
-    // Add the session key in the redis and start the event. Send the response back as event started.
+    const key = RedisClient.getMeetingKey( session);
+    const value = {meeting_name: summaries[0], tasks: [], notes: []};
+
+    await global.redisClient.setKeyWithExpiry(key, value, RedisExpiryTime);
+    return Messages.meetingStarted(value);
+
   } else {
-    // Send the both event back as a card and ask the user which event to start.
-  }
+    // For now picking the first event. Use filters and whatever business logic we need here.
+    const key = RedisClient.getMeetingKey( session);
+    const value = {meeting_name: summaries[0], tasks: [], notes: []};
 
-  return message;
+    await global.redisClient.setKeyWithExpiry( key, value, RedisExpiryTime);
+    return Messages.meetingStarted(value);
+  }
 }
 
-function handleMeetingComplete(session, res, params, payload = {}) {
+async function handleMeetingComplete(options) {
   // Get the tasks and notes and post it to confluence/dropbox.
-}
+  const {session, intent, params} = options;
+  const key = RedisClient.getMeetingKey(session);
+  const value = await global.redisClient.getKey(key);
 
-function getAction(params) {
-  if (1) {
-    return ActionEnum.NOTE_ACTION;
-  }
-  return ActionEnum.TASK_ACTION;
-}
+  console.log('notes', value.notes);
+  console.log('tasks', value.tasks);
 
+  return Messages.meetingConcluded({meeting_name: value.meeting_name});
+}
 
 module.exports = router;
