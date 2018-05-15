@@ -26,7 +26,7 @@ const messages = class Messages {
              "simpleResponses": [
                {
                  "displayText": `Started scribing ${params.meeting_name}`,
-                 "ssml": `<speak>Started scribing <break time="40ms"/> ${params.meeting_name} </speak>`
+                 "ssml": `<speak> Started scribing <break time="40ms"/> ${params.meeting_name} </speak>`
                }
              ]
            }
@@ -75,6 +75,42 @@ const messages = class Messages {
      }
    }
 
+   static customTimeboxing(conversation) {
+     return {
+       "fulfillmentMessages": [
+         {
+           "platform": "ACTIONS_ON_GOOGLE",
+           "simpleResponses": {
+             "simpleResponses": [
+               {
+                 "displayText": `Time boxing for ${conversation} is completed.`,
+                 "ssml": `<speak>Time boxing for ${conversation} is completed.</speak>`
+               }
+             ]
+           }
+         }
+       ]
+     }
+   }
+
+   static ccEmail(params) {
+     return {
+       "fulfillmentMessages": [
+         {
+           "platform": "ACTIONS_ON_GOOGLE",
+           "simpleResponses": {
+             "simpleResponses": [
+               {
+                 "displayText": `Sent meeting details as email to ${params.email}`,
+                 "ssml": `<speak>Sent meeting details as email to <break time="40ms"/> ${params.email}</speak>`
+               }
+             ]
+           }
+         }
+       ]
+     }
+   }
+
    static noteAdded(params) {
       return {
         "fulfillmentMessages": [
@@ -110,6 +146,24 @@ const messages = class Messages {
        ]
      }
    }
+
+  static NoEvents() {
+    return {
+      "fulfillmentMessages": [
+        {
+          "platform": "ACTIONS_ON_GOOGLE",
+          "simpleResponses": {
+            "simpleResponses": [
+              {
+                "displayText": `There are no google calendar invites currently. Please create one`,
+                "ssml": `There are no google calendar invites currently. Please create one`
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
 
 };
 

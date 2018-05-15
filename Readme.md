@@ -7,6 +7,7 @@
 - [ ] Confluence APIs for adding to the space and creating comments for actions.
 - [ ] Change the default welcome message intent.
 - [ ] CC'ing a user intent. 
+- [ ] Template for cc'ing email.
 
 ## Check this out
 - Check the ```config/default.json``` and replace the keys there to link with your accounts/settings.

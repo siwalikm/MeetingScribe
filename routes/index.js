@@ -1,5 +1,6 @@
 const express = require('express');
 const config = require('config');
+const request = require('request-promise-native');
 const router = express.Router();
 const GoogleCalendar = require('../clients/google-calendar');
 const Messages = require('../clients/messages');
@@ -10,7 +11,9 @@ const INTENTS = {
   CONCLUDE_MEETING: 'ConcludeMeeting',
   TASK: 'task',
   NOTE: 'note',
-  TIMEBOX_MEETING: 'timeBox'
+  TIMEBOX_MEETING: 'timeBox',
+  CC_EMAIL: 'ccEmail',
+  CUSTOM_TIMER: 'customTimer' // For timebox custom intents.
 };
 
 const RedisExpiryTime = config.get('redis.global_expiry_time') || 1800;
@@ -28,12 +31,13 @@ router.post('/', async function(req, res, next) {
   console.log('intent', intent);
   console.log('params', params);
 
-  const message = await getMessage({session, intent, params});
+  const message = await getMessage({session, intent, params}, body.queryResult);
+  console.log('message', message);
   res.type('json');
   res.json(message);
 });
 
-function getMessage(options) {
+function getMessage(options, queryResult) {
   const {session, intent, params} = options;
 
   switch (intent) {
@@ -47,9 +51,26 @@ function getMessage(options) {
       return handleTimeBoxEvents(options);
     case INTENTS.CONCLUDE_MEETING:
       return handleMeetingComplete(options);
+    case INTENTS.CC_EMAIL:
+      return handleCCEmail(options);
+    case INTENTS.CUSTOM_TIMER:
+      return handleCustomTimer(options, queryResult);
     default:
       return Messages.unKnownIntent();
   }
+}
+
+async function handleCustomTimer(options, queryResult) {
+  const {session, intent, params} = options;
+  const conversation = queryResult.outputContexts[0].parameters.conversation;
+  console.log('conversation', conversation);
+  return Messages.customTimeboxing(conversation);
+}
+
+async function handleCCEmail(options) {
+  const {session, intent, params} = options;
+
+  return Messages.ccEmail(params);
 }
 
 async function handleMeetingCreate(options) {
@@ -57,7 +78,7 @@ async function handleMeetingCreate(options) {
   const googleCalendar = new GoogleCalendar();
   const events = await googleCalendar.getFutureEvents();
 
-  if (events.length === 0) { return Messages.unKnownIntent(); }
+  if (events.length === 0) { return Messages.NoEvents(); }
 
   const key = RedisClient.getMeetingKey(session);
   const value = {meeting_name: events[0].summary, tasks: [], notes: []};
@@ -83,8 +104,6 @@ async function handleMeetingComplete(options) {
 
   console.log('notes', value.notes);
   console.log('tasks', value.tasks);
-
-  // Adding the note to the confluence/dropbox.
 
   return Messages.meetingConcluded({meeting_name: value.meeting_name});
 }
@@ -130,10 +149,45 @@ async function meetingTimer(callback, time, params = {}) {
 
 function triggerMeetingAboutToEnd(params) {
     console.log('Trigger the intent that will notify organizer about the meeting to be ended', params);
+    // Call the custom intent customTimer.
+    // We have to call the google assistant.
 }
 
 function timeBox(params) {
   console.log('Time boxing the event', params);
+  const session = params.session;
+  const sessionId = getSessionFromBody(session);
+  console.log('timeBox sessionID', sessionId)
+
+  const data = {
+    event: {
+      name: 'custom_event',
+      data: {
+        name: params.params.conversation
+      }
+    },
+    'timezone':'America/New_York',
+    'lang':'en',
+    'sessionId': sessionId
+  };
+
+  const options = {
+    url: 'https://api.dialogflow.com/api/query?v=20180515',
+    method: 'POST',
+    json: data,
+    headers: {
+      'User-Agent': 'my request',
+      'Authorization': 'Bearer 04b1df3c2be843f39c077ca4b2e89c92',
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    }
+  };
+
+  request(options, (error, response, body) =>{
+    console.log('response', response);
+  })
+
+
 }
 
 function getParamsForTimeBox(duration) {
@@ -144,6 +198,11 @@ function getParamsForTimeBox(duration) {
   } else if (duration.unit === 'min') {
     return duration.amount === 1 ? `${duration.amount} minute` : `${duration.amount} minutes`;
   }
+}
+
+function getSessionFromBody(session) {
+  const arr = session.split('/');
+  return arr[arr.length - 1];
 }
 
 module.exports = router;

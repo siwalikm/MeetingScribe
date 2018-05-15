@@ -8,6 +8,6 @@
   "redis": {
     "host": "127.0.0.1",
     "port": "6379",
-    "global_expiry_time": 300 // In seconds.
+    "global_expiry_time": 3600 // In seconds.
   }
 }
