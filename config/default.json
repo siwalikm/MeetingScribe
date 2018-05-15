@@ -1,6 +1,6 @@
 
 {
-  "google_calendar_auth_token": "ya29.Glu8BZ0rCliXUgVpoZbmxbsp_P9VkFOrijktvUCaRKn2xJNzEmHlOH3MhlEHfYynJMAGNBQFH-7Fg7j1lTOfG-dcs2GGxNVLPFnfsvtRTZU5i56pZNXCmA_17_uH",
+  "google_calendar_auth_token": "ya29.Gly8BbXkPfyRCK9qWFHE7-RW9f0ACOYD0593rzw9RQ5C2SnzY9r4XOeNxPluWB28TwQ_a-TQsIZtVK98cclF1AsKrXA7ua5CbLy_97z8f-oXqUDsT2240PKgBBgmig",
   "google_calendar_upper_bound": 30, // In minutes.
   "express": {
     "port": 5000

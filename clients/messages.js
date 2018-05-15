@@ -58,7 +58,21 @@ const messages = class Messages {
    }
 
    static timeBoxing(params) {
-
+      return {
+       "fulfillmentMessages": [
+         {
+           "platform": "ACTIONS_ON_GOOGLE",
+           "simpleResponses": {
+             "simpleResponses": [
+               {
+                 "displayText": `Time boxing ${params.conversation} for ${params.time} `,
+                 "ssml": `<speak>Time boxing ${params.conversation} for <break time="40ms"/>${params.time} </speak>`
+               }
+             ]
+           }
+         }
+       ]
+     }
    }
 
    static noteAdded(params) {

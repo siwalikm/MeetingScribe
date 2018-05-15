@@ -39,7 +39,7 @@ const GoogleCalendar  = class GoogleCalendar {
    * Returns event for the next 3 hours.
    * Making the assumption that we will fetch the primary calendar ID.
    **/
-  getFutureEventsSummaries() {
+  getFutureEvents() {
     const timeMin = new Date().toISOString();
     const timeNow = new Date();
 
@@ -55,10 +55,26 @@ const GoogleCalendar  = class GoogleCalendar {
       const events = response.items;
       console.log( 'events', events);
 
-      return events.map(event => event.summary);
+      return events.map((event) => ({endTime: event.end.dateTime, summary: event.summary}));
     }).catch( (error) => {
       console.log('error', error);
     });
+  }
+
+  static getTimeRemaining(endTime) {
+    const date1 = new Date(endTime);
+    const date2 = new Date();
+    return Math.abs(date1 - date2);
+  }
+
+  static convertToMilliSeconds(duration) {
+    if (duration.unit === 'min') {
+      return duration.amount * 60 * 1000;
+    } else if (duration.unit === 's') {
+      return duration.amount * 1000;
+    } else if (duration.unit === 'h') {
+      return duration.amount * 60 * 60 * 1000;
+    }
   }
 };
 
