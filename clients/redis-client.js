@@ -41,6 +41,17 @@ const redisClient = class RedisClient {
     }))
   }
 
+  ifExists(key) {
+    return new Promise(((resolve, reject) => {
+      this.redisInstance.EXISTS(key, (err, data) => {
+        if (err) {
+          resolve({});
+        }
+        resolve(JSON.parse(data));
+      })
+    }))
+  }
+
   // Add the JSON to the session key.
 
   // Update the JSON in the session key.

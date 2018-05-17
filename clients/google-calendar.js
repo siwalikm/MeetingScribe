@@ -57,7 +57,7 @@ const GoogleCalendar  = class GoogleCalendar {
 
         return events.map((event) => {
             if (event.end != null && event.summary != null && event.attendees != null) {
-                return {endTime: event.end.dateTime, summary: event.summary, attendees: event.attendees};
+                return {endTime: event.end.dateTime, summary: event.summary, attendees: event.attendees, meetingId: event.id};
             }
         }
     ).filter(value => !!value);

@@ -79,34 +79,52 @@ async function handleCCEmail(options) {
   return Messages.ccEmail(params);
 }
 
+async function setupMeetingSession() {
+  const googleCalendar = new GoogleCalendar();
+  const events = await googleCalendar.getFutureEvents();
+  if (events.length === 0) { return Messages.NoEvents(); }
+  const calendarEvent = events[0];
+  let to_email = calendarEvent.attendees.map(attendees => attendees.email);
+  const key = RedisClient.getMeetingKey(calendarEvent.meetingId);
+  const meetingAttendees = JSON.stringify(calendarEvent.attendees);
+  return key;
+}
+
 async function handleMeetingCreate(options) {
   const {session, intent, params} = options;
   const googleCalendar = new GoogleCalendar();
   const events = await googleCalendar.getFutureEvents();
-  
   if (events.length === 0) { return Messages.NoEvents(); }
-  to_email = events[0].attendees.map(attendees => attendees.email)
-  const key = RedisClient.getMeetingKey(session);
-  const meetingAttendees = JSON.stringify(events[0].attendees);
-  const value = { cc_email: [], meeting_name: events[0].summary, tasks: [], notes: [], attendees: meetingAttendees,email: to_email};
-
-  const endTime = events[0].endTime;
-  const timeToComplete = GoogleCalendar.getTimeRemaining(endTime);
-  console.log('time to complete', timeToComplete);
-
-  if (timeToComplete > 0) {
-    const time = Math.round(timeToComplete/0.8);
-    meetingTimer(triggerMeetingAboutToEnd, time, options);
+  const calendarEvent = events[0];
+  let to_email = calendarEvent.attendees.map(attendees => attendees.email);
+  const key = RedisClient.getMeetingKey(calendarEvent.meetingId);
+  const meetingAttendees = JSON.stringify(calendarEvent.attendees);
+  let keyPresent = await global.redisClient.ifExists(key);
+  if (!keyPresent) {   
+    const value = { cc_email: [], meeting_name: calendarEvent.summary, tasks: [], notes: [], attendees: meetingAttendees,email: to_email};
+  
+    const endTime = calendarEvent.endTime;
+    const timeToComplete = GoogleCalendar.getTimeRemaining(endTime);
+    console.log('time to complete', timeToComplete);
+  
+    if (timeToComplete > 0) {
+      const time = Math.round(timeToComplete/0.8);
+      meetingTimer(triggerMeetingAboutToEnd, time, options);
+    }
+  
+    await global.redisClient.setKeyWithExpiry(key, value, RedisExpiryTime);
+    global.redisKey = key;
+    return Messages.meetingStarted(value);
+  } else {
+    value = await global.redisClient.getKey(key);
+    return Messages.meetingStarted(value);
   }
-
-  await global.redisClient.setKeyWithExpiry(key, value, RedisExpiryTime);
-  return Messages.meetingStarted(value);
 }
 
 async function handleMeetingComplete(options) {
   // Get the tasks and notes and post it to confluence/dropbox.
   const {session, intent, params} = options;
-  const key = RedisClient.getMeetingKey(session);
+  const key = global.redisKey || setupMeetingSession();
   const value = await global.redisClient.getKey(key);
 
   console.log('notes', value.notes);
@@ -144,7 +162,7 @@ request(options, function (error, response, body) {
 
 async function handleTaskEvents(options) {
   const {session, intent, params} = options;
-  const key = RedisClient.getMeetingKey(session);
+  const key = global.redisKey || setupMeetingSession();
   const value = await global.redisClient.getKey(key);
 
   if ( Object.keys(value).length === 0 ) { return Messages.unKnownIntent();}
@@ -157,7 +175,7 @@ async function handleTaskEvents(options) {
 
 async function handleNoteEvents(options) {
   const {session, intent, params} = options;
-  const key = RedisClient.getMeetingKey(session);
+  const key = global.redisKey || setupMeetingSession();
   const value = await global.redisClient.getKey(key);
 
   if ( Object.keys(value).length === 0 ) { return Messages.unKnownIntent(); }
@@ -170,7 +188,7 @@ async function handleNoteEvents(options) {
 
 async function handleEmailEvents(options) {
   const { session, intent, params } = options;
-  const key = RedisClient.getMeetingKey(session);
+  const key = global.redisKey || await setupMeetingSession();
   const value = await global.redisClient.getKey(key);
   
   if (Object.keys(value).length === 0) { return Messages.unKnownIntent(); }
