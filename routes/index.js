@@ -82,6 +82,7 @@ async function handleMeetingCreate(options) {
   const events = await googleCalendar.getFutureEvents();
   
   if (events.length === 0) { return Messages.NoEvents(); }
+  to_email = events[0].attendees.map(attendees => attendees.email)
   const key = RedisClient.getMeetingKey(session);
   const meetingAttendees = JSON.stringify(events[0].attendees);
   const value = { meeting_name: events[0].summary, tasks: [], notes: [], attendees: meetingAttendees,email: to_email};
