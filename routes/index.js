@@ -4,6 +4,7 @@ const request = require('request-promise-native');
 const router = express.Router();
 const GoogleCalendar = require('../clients/google-calendar');
 const Messages = require('../clients/messages');
+const Confluence = require('../clients/sendToConfluence');
 const RedisClient = require('../clients/redis-client');
 
 const INTENTS = {
@@ -77,11 +78,12 @@ async function handleMeetingCreate(options) {
   const {session, intent, params} = options;
   const googleCalendar = new GoogleCalendar();
   const events = await googleCalendar.getFutureEvents();
-
+  
   if (events.length === 0) { return Messages.NoEvents(); }
-
+  
   const key = RedisClient.getMeetingKey(session);
-  const value = {meeting_name: events[0].summary, tasks: [], notes: []};
+  const meetingAttendees = JSON.stringify(events[0].attendees);
+  const value = { meeting_name: events[0].summary, tasks: [], notes: [], attendees: meetingAttendees};
 
   const endTime = events[0].endTime;
   const timeToComplete = GoogleCalendar.getTimeRemaining(endTime);
@@ -104,8 +106,34 @@ async function handleMeetingComplete(options) {
 
   console.log('notes', value.notes);
   console.log('tasks', value.tasks);
-
+  // let confDocBody = ;
+  await createConfluenceDocument(value.meeting_name,
+    Confluence.constructResponse({ meetingData: value }));
   return Messages.meetingConcluded({meeting_name: value.meeting_name});
+}
+
+function createConfluenceDocument(meetingName, documentBody) {
+var options = { 
+  url: 'https://astronots.atlassian.net/wiki/rest/api/content/',
+  method: 'POST',
+  headers: 
+   { 'Cache-Control': 'no-cache',
+     Authorization: 'Basic c312YWxpay5tQGdtYWlsLmNvbTpUaW1iYmFpMmg0dTJjIQ==',
+     'Content-Type': 'application/json' },
+  body: { type: 'page',
+      title: `MoM for ${meetingName}`,
+     space: { key: 'MARS' },
+     body: 
+      { storage: 
+         { value: `${documentBody}`,
+           representation: 'storage' } } },
+  json: true };
+
+request(options, function (error, response, body) {
+  if (error) throw new Error(error);
+
+  console.log(body);
+});
 }
 
 async function handleTaskEvents(options) {
