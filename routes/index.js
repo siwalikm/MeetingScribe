@@ -118,7 +118,7 @@ var options = {
   method: 'POST',
   headers: 
    { 'Cache-Control': 'no-cache',
-     Authorization: 'Basic c312YWxpay5tQGdtYWlsLmNvbTpUaW1iYmFpMmg0dTJjIQ==',
+     Authorization: 'Basic xxxxxxxxxxxxxxxxxxxx',
      'Content-Type': 'application/json' },
   body: { type: 'page',
       title: `MoM for ${meetingName}`,
