@@ -55,7 +55,13 @@ const GoogleCalendar  = class GoogleCalendar {
       const events = response.items;
       console.log( 'events', events);
 
-      return events.map((event) => ({endTime: event.end.dateTime, summary: event.summary, attendees: event.attendees}));
+        return events.map((event) => {
+            if (event.end != null && event.summary != null && event.attendees != null) {
+                return {endTime: event.end.dateTime, summary: event.summary, attendees: event.attendees};
+            }
+        }
+    ).filter(value => !!value);
+        ;
     }).catch( (error) => {
       console.log('error', error);
     });

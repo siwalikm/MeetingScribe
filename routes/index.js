@@ -5,6 +5,8 @@ const router = express.Router();
 const GoogleCalendar = require('../clients/google-calendar');
 const Messages = require('../clients/messages');
 const RedisClient = require('../clients/redis-client');
+const mailer = require('nodemailer');
+var EmailTemplate = require('email-templates').EmailTemplate;
 
 const INTENTS = {
   START_MEETING: 'StartMeeting',
@@ -79,9 +81,9 @@ async function handleMeetingCreate(options) {
   const events = await googleCalendar.getFutureEvents();
 
   if (events.length === 0) { return Messages.NoEvents(); }
-
+  to_email = events[0].attendees.map(attendees => attendees.email)
   const key = RedisClient.getMeetingKey(session);
-  const value = {meeting_name: events[0].summary, tasks: [], notes: []};
+  const value = {meeting_name: events[0].summary, tasks: [], notes: [],email: to_email};
 
   const endTime = events[0].endTime;
   const timeToComplete = GoogleCalendar.getTimeRemaining(endTime);
@@ -104,6 +106,7 @@ async function handleMeetingComplete(options) {
 
   console.log('notes', value.notes);
   console.log('tasks', value.tasks);
+  sendEmail(value.notes, value.tasks, value.meeting_name, value.email)
 
   return Messages.meetingConcluded({meeting_name: value.meeting_name});
 }
@@ -199,7 +202,44 @@ function getParamsForTimeBox(duration) {
     return duration.amount === 1 ? `${duration.amount} minute` : `${duration.amount} minutes`;
   }
 }
+function sendEmail(notes, tasks, meetingName,email){
+  note_count = 0;
+  task_count =0;
+  //time = `Time ${google_meeting_time}`
+  note_header = "<br><b>.Meeting Notes : </b> <br>"
+  html_notes = notes.map((note) => {
+      return `<b> ${note_count++} . ${note} </b><br>`
+  });
+  html_notes = html_notes.join('')
+  html_task = tasks.map(task => {
+      return `<b> @${task.user} - ${task.task}</b><br>`
+  });
+    html_task = html_task.join('')
+    var transporter = mailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: 'wildcards-admin@freshbugs.com',
+            pass: 'freshdesk12345'
+        }
+    });
+    task_header = "<br> Action Items : <br>"
+  final_html = note_header+html_notes+ task_header +html_task;
+    var mailOptions = {
+        from: 'wildcards-admin@freshbugs.com',
+        to: email.toString(),
+        subject: `MoM for ${meetingName}`,
+        text: 'That was easy!',
+        html: final_html
+    };
 
+    transporter.sendMail(mailOptions, function(error, info){
+        if (error) {
+            console.log(error);
+        } else {
+            console.log('Email sent: ' + info.response);
+        }
+    });
+}
 function getSessionFromBody(session) {
   const arr = session.split('/');
   return arr[arr.length - 1];
