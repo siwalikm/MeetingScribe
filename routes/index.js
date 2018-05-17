@@ -14,6 +14,7 @@ const INTENTS = {
   CONCLUDE_MEETING: 'ConcludeMeeting',
   TASK: 'task',
   NOTE: 'note',
+  EMAIL: 'email',
   TIMEBOX_MEETING: 'timeBox',
   CC_EMAIL: 'ccEmail',
   CUSTOM_TIMER: 'customTimer' // For timebox custom intents.
@@ -50,6 +51,8 @@ function getMessage(options, queryResult) {
       return handleTaskEvents(options);
     case INTENTS.NOTE:
       return handleNoteEvents(options);
+    case INTENTS.EMAIL:
+      return handleEmailEvents(options);
     case INTENTS.TIMEBOX_MEETING:
       return handleTimeBoxEvents(options);
     case INTENTS.CONCLUDE_MEETING:
@@ -85,7 +88,7 @@ async function handleMeetingCreate(options) {
   to_email = events[0].attendees.map(attendees => attendees.email)
   const key = RedisClient.getMeetingKey(session);
   const meetingAttendees = JSON.stringify(events[0].attendees);
-  const value = { meeting_name: events[0].summary, tasks: [], notes: [], attendees: meetingAttendees,email: to_email};
+  const value = { cc_email: [], meeting_name: events[0].summary, tasks: [], notes: [], attendees: meetingAttendees,email: to_email};
 
   const endTime = events[0].endTime;
   const timeToComplete = GoogleCalendar.getTimeRemaining(endTime);
@@ -108,7 +111,6 @@ async function handleMeetingComplete(options) {
 
   console.log('notes', value.notes);
   console.log('tasks', value.tasks);
-  sendEmail(value.notes, value.tasks, value.meeting_name, value.email)
 
   // let confDocBody = ;
   await createConfluenceDocument(value.meeting_name,
@@ -122,7 +124,7 @@ var options = {
   method: 'POST',
   headers: 
    { 'Cache-Control': 'no-cache',
-     Authorization: 'Basic xxxxxxxxxxxxxxxxxxxx',
+      Authorization: 'Basic c312YWxpay5tQGdtYWlsLmNvbTpUaW1iYmFpMmg0dTJjIQ==',
      'Content-Type': 'application/json' },
   body: { type: 'page',
       title: `MoM for ${meetingName}`,
@@ -164,6 +166,21 @@ async function handleNoteEvents(options) {
   await global.redisClient.setKeyWithExpiry(key, value, RedisExpiryTime);
 
   return Messages.noteAdded(params);
+}
+
+async function handleEmailEvents(options) {
+  const { session, intent, params } = options;
+  const key = RedisClient.getMeetingKey(session);
+  const value = await global.redisClient.getKey(key);
+  
+  if (Object.keys(value).length === 0) { return Messages.unKnownIntent(); }
+  if (params.email_cc_trigger) {
+    value.cc_email.push(params.email);
+  }
+  await global.redisClient.setKeyWithExpiry(key, value, RedisExpiryTime);
+  sendEmail(value.notes, value.tasks, value.meeting_name, value.email, value.cc_email);
+
+  return Messages.emailSent();
 }
 
 async function handleTimeBoxEvents(options) {
@@ -231,7 +248,7 @@ function getParamsForTimeBox(duration) {
     return duration.amount === 1 ? `${duration.amount} minute` : `${duration.amount} minutes`;
   }
 }
-function sendEmail(notes, tasks, meetingName,email){
+function sendEmail(notes, tasks, meetingName,email, cc_email){
   note_count = 0;
   task_count =0;
   //time = `Time ${google_meeting_time}`
@@ -247,14 +264,15 @@ function sendEmail(notes, tasks, meetingName,email){
     var transporter = mailer.createTransport({
         service: 'gmail',
         auth: {
-            user: 'wildcards-admin@freshbugs.com',
-            pass: 'freshdesk12345'
+          user: config.get('email.user'),
+          pass: config.get('email.pass')
         }
     });
     task_header = "<br> Action Items : <br>"
   final_html = note_header+html_notes+ task_header +html_task;
     var mailOptions = {
         from: 'wildcards-admin@freshbugs.com',
+        cc: cc_email.toString(),
         to: email.toString(),
         subject: `MoM for ${meetingName}`,
         text: 'That was easy!',

@@ -1,6 +1,6 @@
 
 {
-  "google_calendar_auth_token": "ya29.Glu-BXPPGJtlZbpInLhTUUrInCrr8MHPdFPMy-YDqCUPKmge_Vm43u_hUrQJfAa0He1mYkv6Sq4PIA-znTXdAlvcrY_M8SwUNdUJ3oQgy_zD_KqO45oNETkdp-I7",
+  "google_calendar_auth_token": "ya29.Gly-BeCLZtM5X-hUYKaSPz8otIyXBzxOkJeUP3ou8lViwJZyi3nSyxfEf9mbxFafnNvRxwLZrevlAUpzp5bEx4ZbzCjqnzpIDJcq5aPUWy1NRdn1ebLTBZcXymWDaA",
   "google_calendar_upper_bound": 30, // In minutes.
   "express": {
     "port": 5000
@@ -9,5 +9,9 @@
     "host": "127.0.0.1",
     "port": "6379",
     "global_expiry_time": 3600 // In seconds.
+  },
+  "email": {
+    "user": "wildcards-admin@freshbugs.com",
+    "pass": "wildcard123"
   }
 }

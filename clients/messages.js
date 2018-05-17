@@ -129,6 +129,24 @@ const messages = class Messages {
       }
    }
 
+   static emailSent() {
+      return {
+        "fulfillmentMessages": [
+          {
+            "platform": "ACTIONS_ON_GOOGLE",
+            "simpleResponses": {
+              "simpleResponses": [
+                {
+                  "displayText": `Sent MoM to all meeting attendees`,
+                  "ssml": `<speak> Sent email to all meeting attendees </speak>`
+                }
+              ]
+            }
+          }
+        ]
+      }
+   }
+
    static unKnownIntent() {
      return {
        "fulfillmentMessages": [
