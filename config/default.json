@@ -1,17 +1,23 @@
-
 {
-  "google_calendar_auth_token": "ya29.Gly-BeCLZtM5X-hUYKaSPz8otIyXBzxOkJeUP3ou8lViwJZyi3nSyxfEf9mbxFafnNvRxwLZrevlAUpzp5bEx4ZbzCjqnzpIDJcq5aPUWy1NRdn1ebLTBZcXymWDaA",
+  "google_calendar_auth_token": "ya29.Gly_BfquOXAiDuy91DkKWwlVAV8NVOgy-pUMgTVDnuz2Q7o9Z3ciDT9PAZNiH2cvDM5ManGipHmJj55eRsHc37nPPjh-KPLIaR14kcrXQMIoBXM5nwfBVeXafx2ruQ",
   "google_calendar_upper_bound": 30, // In minutes.
   "express": {
     "port": 5000
   },
   "redis": {
-    "host": "127.0.0.1",
-    "port": "6379",
+    "host": "redis://h:pafa748631e83b96806d2fd3b6abc91d1d3acccf47041c9b0c6f181f133070e65@ec2-34-235-90-46.compute-1.amazonaws.com",
+    "port": "9449",
     "global_expiry_time": 3600 // In seconds.
   },
   "email": {
     "user": "wildcards-admin@freshbugs.com",
-    "pass": "wildcard123"
+    "pass": "321wildcard"
+  },
+  "OneSignal": {
+    "auth": "ZDM0OTViZGYtNTkyZi00ZGY1LTkwN2UtNjBmOWZlZDQyNzE2",
+    "app_id": "486feb40-1638-4dc3-a86a-d6f26517a9c3"
+  },
+  "confluence": {
+    "key": "c2l3YWxpay5tQGdtYWlsLmNvbTpUaW1iYmFpMmg0dTJjIQ"
   }
 }
