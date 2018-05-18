@@ -84,3 +84,4 @@ config/local*.*
 
 # ingnore tsc compiled folder
 lib
+/config/default.json

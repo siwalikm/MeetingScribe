@@ -151,7 +151,7 @@ var options = {
   method: 'POST',
   headers: 
    { 'Cache-Control': 'no-cache',
-      Authorization: 'Basic c2l3YWxpay5tQGdtYWlsLmNvbTpUaW1iYmFpMmg0dTJjIQ==',
+      Authorization: `Basic ${config.get('confluence.key')}`,
      'Content-Type': 'application/json' },
   body: { type: 'page',
       title: `MoM for ${meetingName}`,
@@ -263,34 +263,26 @@ function timeBox(params) {
   const sessionId = getSessionFromBody(session);
   console.log('timeBox sessionID', sessionId)
 
-  const data = {
-    event: {
-      name: 'custom_event',
-      data: {
-        name: params.params.conversation
-      }
-    },
-    'timezone':'America/New_York',
-    'lang':'en',
-    'sessionId': sessionId
-  };
+  var request = require("request");
 
-  const options = {
-    url: 'https://api.dialogflow.com/api/query?v=20180515',
-    method: 'POST',
-    json: data,
-    headers: {
-      'User-Agent': 'my request',
-      'Authorization': 'Bearer 04b1df3c2be843f39c077ca4b2e89c92',
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    }
-  };
+var options = { method: 'POST',
+  url: 'https://onesignal.com/api/v1/notifications',
+  headers: 
+   { 'Cache-Control': 'no-cache',
+     Authorization: `Basic ${config.get('OneSignal.auth')}`,
+     'Content-Type': 'application/json' },
+  body: 
+   { app_id: `${config.get('OneSignal.app_id')}`,
+     included_segments: [ 'All' ],
+     data: { foo: 'bar' },
+      contents: { en: `Timebox of ${params.params.time} has finished.` } },
+  json: true };
 
-  request(options, (error, response, body) =>{
-    console.log('response', response);
-  })
+request(options, function (error, response, body) {
+  if (error) throw new Error(error);
 
+  console.log(body);
+});
 
 }
 
