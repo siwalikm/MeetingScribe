@@ -334,9 +334,9 @@ function sendEmail(notes, tasks, meetingName,email, cc_email,time_track){
     time_header = "<br><b>time track : </b> <br>"
 
     html_time_track = time_track.map((time_track) => {
-        if(time_track.actual_duration && time_track.actual_duration)
+        if(time_track.planned_duration && time_track.actual_duration)
         {
-            return ` ${time_count++} . ${time_track.conversation} 'planned_time: '${time_track.actual_duration} actual_time: ${time_track.actual_duration} <br>`
+            return ` ${time_count++} . ${time_track.conversation} 'planned_time: '${time_track.planned_duration} actual_time: ${time_track.actual_duration} <br>`
         }
     });
     html_time_track = html_time_track.join('')
