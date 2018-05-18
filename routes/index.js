@@ -268,7 +268,9 @@ function timeBox(params) {
 var options = { method: 'POST',
   url: 'https://onesignal.com/api/v1/notifications',
   headers: 
-   { 'Cache-Control': 'no-cache',
+    {
+    'Postman-Token': 'fd6bd72d-c31e-4e43-af04-53a362532a79',
+     'Cache-Control': 'no-cache',
      Authorization: `Basic ${config.get('OneSignal.auth')}`,
      'Content-Type': 'application/json' },
   body: 

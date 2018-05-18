@@ -8,7 +8,7 @@ const messages = class Messages {
              "simpleResponses": [
                {
                  "displayText": `Assigned the task ${params.task} to ${params.user}`,
-                 "ssml": `<speak>Assigned <break time="40ms"/> ${params.task} to <break time="40ms"/>${params.user}</speak>`
+                 "ssml": `<speak>done</speak>`
                }
              ]
            }
