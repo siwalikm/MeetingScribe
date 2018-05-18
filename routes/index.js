@@ -74,9 +74,18 @@ async function handleCustomTimer(options, queryResult) {
 }
 
 async function handleCCEmail(options) {
-  const {session, intent, params} = options;
+    const {session, intent, params} = options;
+    const key = global.redisKey || await setupMeetingSession();
+    const value = await global.redisClient.getKey(key);
 
-  return Messages.ccEmail(params);
+    if (Object.keys(value).length === 0) {
+        return Messages.unKnownIntent();
+    }
+    if (params.email) {
+        value.cc_email.push(params.email);
+    }
+    await global.redisClient.setKeyWithExpiry(key, value, RedisExpiryTime);
+    return Messages.ccEmail(params);
 }
 
 async function setupMeetingSession() {
@@ -101,7 +110,7 @@ async function handleMeetingCreate(options) {
   const meetingAttendees = JSON.stringify(calendarEvent.attendees);
   let keyPresent = await global.redisClient.ifExists(key);
   if (!keyPresent) {   
-    const value = { cc_email: [], meeting_name: calendarEvent.summary, tasks: [], notes: [], attendees: meetingAttendees,email: to_email};
+    const value = { cc_email: [], meeting_name: calendarEvent.summary, tasks: [], notes: [], attendees: meetingAttendees,email: to_email, time_track:[]};
   
     const endTime = calendarEvent.endTime;
     const timeToComplete = GoogleCalendar.getTimeRemaining(endTime);
@@ -124,7 +133,7 @@ async function handleMeetingCreate(options) {
 async function handleMeetingComplete(options) {
   // Get the tasks and notes and post it to confluence/dropbox.
   const {session, intent, params} = options;
-  const key = global.redisKey || setupMeetingSession();
+  const key = global.redisKey || await setupMeetingSession();
   const value = await global.redisClient.getKey(key);
 
   console.log('notes', value.notes);
@@ -142,7 +151,7 @@ var options = {
   method: 'POST',
   headers: 
    { 'Cache-Control': 'no-cache',
-      Authorization: 'Basic c312YWxpay5tQGdtYWlsLmNvbTpUaW1iYmFpMmg0dTJjIQ==',
+      Authorization: 'Basic c2l3YWxpay5tQGdtYWlsLmNvbTpUaW1iYmFpMmg0dTJjIQ==',
      'Content-Type': 'application/json' },
   body: { type: 'page',
       title: `MoM for ${meetingName}`,
@@ -162,7 +171,7 @@ request(options, function (error, response, body) {
 
 async function handleTaskEvents(options) {
   const {session, intent, params} = options;
-  const key = global.redisKey || setupMeetingSession();
+  const key = global.redisKey || await setupMeetingSession();
   const value = await global.redisClient.getKey(key);
 
   if ( Object.keys(value).length === 0 ) { return Messages.unKnownIntent();}
@@ -175,7 +184,7 @@ async function handleTaskEvents(options) {
 
 async function handleNoteEvents(options) {
   const {session, intent, params} = options;
-  const key = global.redisKey || setupMeetingSession();
+  const key = global.redisKey || await setupMeetingSession();
   const value = await global.redisClient.getKey(key);
 
   if ( Object.keys(value).length === 0 ) { return Messages.unKnownIntent(); }
@@ -196,17 +205,45 @@ async function handleEmailEvents(options) {
     value.cc_email.push(params.email);
   }
   await global.redisClient.setKeyWithExpiry(key, value, RedisExpiryTime);
-  sendEmail(value.notes, value.tasks, value.meeting_name, value.email, value.cc_email);
+  sendEmail(value.notes, value.tasks, value.meeting_name, value.email, value.cc_email,value.time_track);
 
   return Messages.emailSent();
 }
 
 async function handleTimeBoxEvents(options) {
-  const {session, intent, params} = options;
-
-  meetingTimer(timeBox, GoogleCalendar.convertToMilliSeconds(params.duration), options);
-  params.time = getParamsForTimeBox(params.duration);
-  return Messages.timeBoxing(params);
+    const {session, intent, params} = options;
+    const key = global.redisKey || await setupMeetingSession();
+    const value = await global.redisClient.getKey(key);
+    if (Object.keys(value).length === 0) {
+        return Messages.unKnownIntent();
+    }
+    last_timebox = value.time_track.pop()
+    if (!last_timebox) {
+        value.time_track.push({
+            start_time: new Date().getTime(),
+            endtime: null,
+            planned_duration: getParamsForTimeBox(params.duration),
+            actual_duration: null,
+            conversation: params.conversation
+        });
+    } else {
+        last_timebox.endtime = new Date().getTime();
+        const actual_duration = last_timebox.endtime - last_timebox.start_time;
+        last_timebox.actual_duration = getParamsForDisplayingStats(actual_duration,last_timebox.planned_duration)
+        value.time_track.push(last_timebox);
+        value.time_track.push({
+            start_time: new Date().getTime(),
+            endtime: null,
+            planned_duration: getParamsForTimeBox(params.duration),
+            actual_duration: null,
+            conversation: params.conversation
+        });
+    }
+    console.log('notes', value.time_track);
+    await global.redisClient.setKeyWithExpiry(key, value, RedisExpiryTime);
+    // meetingTimer(timeBox, GoogleCalendar.convertToMilliSeconds(params.duration), options);
+    params.time = getParamsForTimeBox(params.duration);
+    return Messages.timeBoxing(params);
 }
 
 async function meetingTimer(callback, time, params = {}) {
@@ -266,17 +303,50 @@ function getParamsForTimeBox(duration) {
     return duration.amount === 1 ? `${duration.amount} minute` : `${duration.amount} minutes`;
   }
 }
-function sendEmail(notes, tasks, meetingName,email, cc_email){
-  note_count = 0;
-  task_count =0;
+
+function getParamsForDisplayingStats(duration,duration_in_word) {
+    if (duration_in_word.includes('seconds')){
+        const durationInSeconds = duration/1000
+        return `${durationInSeconds} 'seconds'`
+    } else if (duration_in_word.includes('hour')) {
+        return duration
+    } else if (duration_in_word.includes('min')) {
+         const minutes = Math.floor(duration / 60000);
+        return `${minutes} 'minutes'`
+    }
+}
+function sendEmail(notes, tasks, meetingName,email, cc_email,time_track){
+  note_count = 1;
+  time_count = 1
+  task_count = 1;
+    last_timebox = time_track.pop()
+    last_timebox.endtime = new Date().getTime()
+    if (last_timebox) {
+        time_track.push({
+            start_time: last_timebox.start_time,
+            endtime: new Date().getTime(),
+            planned_duration: last_timebox.planned_duration,
+            actual_duration: getParamsForDisplayingStats((last_timebox.endtime - last_timebox.start_time), last_timebox.planned_duration),
+            conversation: last_timebox.conversation
+        });
+    }
   //time = `Time ${google_meeting_time}`
+    time_header = "<br><b>time track : </b> <br>"
+
+    html_time_track = time_track.map((time_track) => {
+        if(time_track.actual_duration && time_track.actual_duration)
+        {
+            return ` ${time_count++} . ${time_track.conversation} 'planned_time: '${time_track.actual_duration} actual_time: ${time_track.actual_duration} <br>`
+        }
+    });
+    html_time_track = html_time_track.join('')
   note_header = "<br><b>.Meeting Notes : </b> <br>"
   html_notes = notes.map((note) => {
-      return `<b> ${note_count++} . ${note} </b><br>`
+      return ` ${note_count++} . ${note} <br>`
   });
   html_notes = html_notes.join('')
   html_task = tasks.map(task => {
-      return `<b> @${task.user} - ${task.task}</b><br>`
+      return `@${task.user} - ${task.task}<br>`
   });
     html_task = html_task.join('')
     var transporter = mailer.createTransport({
@@ -286,8 +356,8 @@ function sendEmail(notes, tasks, meetingName,email, cc_email){
           pass: config.get('email.pass')
         }
     });
-    task_header = "<br> Action Items : <br>"
-  final_html = note_header+html_notes+ task_header +html_task;
+    task_header = "<br><b> Action Items : </b> <br>"
+  final_html = note_header+html_notes+ task_header +html_task +time_header +html_time_track;
     var mailOptions = {
         from: 'wildcards-admin@freshbugs.com',
         cc: cc_email.toString(),
